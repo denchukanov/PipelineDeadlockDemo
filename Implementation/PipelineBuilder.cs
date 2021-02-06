@@ -22,6 +22,7 @@ namespace Implementation
             };
         }
 
+        
         public IPipelineBuilder<TIn, TOut> AddStep<TStepIn, TStepOut>(Func<TStepIn, TStepOut> stepFn)
         {
             TransformBlock<TC<TStepIn, TOut>, TC<TStepOut, TOut>> DefaultSyncStep(Func<TStepIn, TStepOut> fn)
@@ -30,13 +31,14 @@ namespace Implementation
                         TC<TStepOut, TOut> result;
                         try
                         {
+                            if (!tc.IsSuccess)
+                                return new TC<TStepOut, TOut>(tc.TaskCompletionSource, tc.Exception);
+
                             var stepResult = fn(tc.Input);
                             result = new TC<TStepOut, TOut>(stepResult, tc.TaskCompletionSource);
-                            // return new TC<TStepOut, TOut>(stepResult, tc.TaskCompletionSource);
                         }
                         catch (Exception e)
                         {
-                            // tc.TaskCompletionSource.SetException(e);
                             result = new TC<TStepOut, TOut>(tc.TaskCompletionSource, e);
                         }
 
@@ -59,38 +61,26 @@ namespace Implementation
                     {
                         try
                         {
+                            if (!tc.IsSuccess)
+                                return new TC<TStepOut, TOut>(tc.TaskCompletionSource, tc.Exception);
+
                             var s = await tc.Input;
                             return new TC<TStepOut, TOut>(stepFn(s), tc.TaskCompletionSource);
                         }
                         catch (Exception e)
                         {
-                            // tc.TaskCompletionSource.SetException(e);
                             return new TC<TStepOut, TOut>(tc.TaskCompletionSource, e);
                         }
                     }, _options);
                     var targetBlock = ((lastStep as DataflowStep).Block as ISourceBlock<TCAsync<TStepIn, TOut>>);
-                    targetBlock.LinkTo(step, new DataflowLinkOptions(),
-                        // tc => !tc.TaskCompletionSource.Task.IsFaulted
-                        tc => tc.IsSuccess
-                    );
-                    targetBlock.LinkTo(DataflowBlock.NullTarget<TCAsync<TStepIn, TOut>>(), new DataflowLinkOptions(),
-                        // tc => tc.TaskCompletionSource.Task.IsFaulted
-                        tc => !tc.IsSuccess
-                    );
+                    targetBlock.LinkTo(step, new DataflowLinkOptions());
                     _steps.Add(DataflowStep.Sync(step));
                 }
                 else
                 {
                     var step = DefaultSyncStep(stepFn);
                     var targetBlock = ((lastStep as DataflowStep).Block as ISourceBlock<TC<TStepIn, TOut>>);
-                    targetBlock.LinkTo(step, new DataflowLinkOptions(),
-                        // tc => !tc.TaskCompletionSource.Task.IsFaulted
-                        tc => tc.IsSuccess
-                    );
-                    targetBlock.LinkTo(DataflowBlock.NullTarget<TC<TStepIn, TOut>>(), new DataflowLinkOptions(),
-                        // tc => tc.TaskCompletionSource.Task.IsFaulted
-                        tc => !tc.IsSuccess
-                    );
+                    targetBlock.LinkTo(step, new DataflowLinkOptions());
                     _steps.Add(DataflowStep.Sync(step));
                 }
             }
@@ -106,11 +96,13 @@ namespace Implementation
                 {
                     try
                     {
+                        if (!tc.IsSuccess)
+                            return new TCAsync<TStepOut, TOut>(tc.TaskCompletionSource, tc.Exception);
+
                         return new TCAsync<TStepOut, TOut>(stepFn(tc.Input), tc.TaskCompletionSource);
                     }
                     catch (Exception e)
                     {
-                        // tc.TaskCompletionSource.SetException(e);
                         return new TCAsync<TStepOut, TOut>(tc.TaskCompletionSource, e);
                     }
                 }, _options);
@@ -126,25 +118,20 @@ namespace Implementation
                     {
                         try
                         {
+                            if (!tc.IsSuccess)
+                            {
+                                return new TCAsync<TStepOut, TOut>(tc.TaskCompletionSource, tc.Exception);
+                            }
+
                             return new TCAsync<TStepOut, TOut>(stepFn(await tc.Input), tc.TaskCompletionSource);
                         }
                         catch (Exception e)
                         {
-                            // tc.TaskCompletionSource.SetException(e);
-                            // return new TCAsync<TStepOut, TOut>(Task.FromResult(default(TStepOut)), tc.TaskCompletionSource);
                             return new TCAsync<TStepOut, TOut>(tc.TaskCompletionSource, e);
                         }
                     }, _options);
                     var targetBlock = ((lastStep as DataflowStep).Block as ISourceBlock<TCAsync<TStepIn, TOut>>);
-                    targetBlock.LinkTo(step, new DataflowLinkOptions(), tc =>
-                        // !tc.TaskCompletionSource.Task.IsFaulted
-                        tc.IsSuccess
-                    );
-                    targetBlock.LinkTo(DataflowBlock.NullTarget<TCAsync<TStepIn, TOut>>(), new DataflowLinkOptions(),
-                        tc =>
-                            // tc.TaskCompletionSource.Task.IsFaulted
-                            !tc.IsSuccess
-                    );
+                    targetBlock.LinkTo(step, new DataflowLinkOptions());
                     _steps.Add(DataflowStep.Async(step));
                 }
                 else
@@ -153,24 +140,20 @@ namespace Implementation
                     {
                         try
                         {
+                            if (!tc.IsSuccess)
+                            {
+                                return new TCAsync<TStepOut, TOut>(tc.TaskCompletionSource, tc.Exception);
+                            }
+
                             return new TCAsync<TStepOut, TOut>(stepFn(tc.Input), tc.TaskCompletionSource);
                         }
                         catch (Exception e)
                         {
-                            // tc.TaskCompletionSource.SetException(e);
                             return new TCAsync<TStepOut, TOut>(tc.TaskCompletionSource, e);
                         }
                     }, _options);
                     var targetBlock = ((lastStep as DataflowStep).Block as ISourceBlock<TC<TStepIn, TOut>>);
-                    targetBlock.LinkTo(step, new DataflowLinkOptions(), tc =>
-                        // !tc.TaskCompletionSource.Task.IsFaulted
-                        tc.IsSuccess
-                    );
-                    targetBlock.LinkTo(DataflowBlock.NullTarget<TC<TStepIn, TOut>>(), new DataflowLinkOptions(),
-                        tc =>
-                            // tc.TaskCompletionSource.Task.IsFaulted
-                            !tc.IsSuccess
-                    );
+                    targetBlock.LinkTo(step, new DataflowLinkOptions());
                     _steps.Add(DataflowStep.Async(step));
                 }
             }
@@ -185,18 +168,11 @@ namespace Implementation
             var setResultStep =
                 new ActionBlock<TC<TOut, TOut>>((tc) =>
                 {
-                    PipelineResult<TOut> pipelineResult;
-                    if (tc.IsSuccess)
-                    {
-                        pipelineResult = new PipelineResult<TOut>(tc.Input);
-                    }
-                    else
-                    {
-                        pipelineResult = new PipelineResult<TOut>(tc.Exception);
-                    }
+                    var pipelineResult = tc.IsSuccess
+                        ? new PipelineResult<TOut>(tc.Input)
+                        : new PipelineResult<TOut>(tc.Exception);
 
                     tc.TaskCompletionSource.SetResult(pipelineResult);
-                    // tc.TaskCompletionSource.SetResult(tc.Input);
                 }, _options);
             var lastStep = _steps.Last();
             var setResultBlock = ((lastStep as DataflowStep).Block as ISourceBlock<TC<TOut, TOut>>);

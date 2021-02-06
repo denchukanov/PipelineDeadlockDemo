@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace Abstractions
 {
@@ -8,14 +7,18 @@ namespace Abstractions
         public PipelineResult(TResult value)
         {
             Value = value;
+            Status = PipelineResultStatus.Success;
         }
 
         public PipelineResult(Exception ex)
         {
-            Errors = new List<string> {ex.Message};
+            Exception = ex;
+            Status = PipelineResultStatus.Exception;
         }
 
         public TResult Value { get; }
-        public IReadOnlyList<string> Errors { get; }
+        public PipelineResultStatus Status { get; }
+
+        public Exception Exception { get; }
     }
 }
