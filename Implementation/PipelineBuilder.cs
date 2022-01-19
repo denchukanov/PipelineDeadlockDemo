@@ -22,7 +22,7 @@ namespace Implementation
             };
         }
 
-        
+
         public IPipelineBuilder<TIn, TOut> AddStep<TStepIn, TStepOut>(Func<TStepIn, TStepOut> stepFn)
         {
             TransformBlock<TC<TStepIn, TOut>, TC<TStepOut, TOut>> DefaultSyncStep(Func<TStepIn, TStepOut> fn)
@@ -165,18 +165,51 @@ namespace Implementation
         {
             if (_steps.Count == 0) throw new InvalidOperationException();
 
-            var setResultStep =
-                new ActionBlock<TC<TOut, TOut>>((tc) =>
-                {
-                    var pipelineResult = tc.IsSuccess
-                        ? new PipelineResult<TOut>(tc.Input)
-                        : new PipelineResult<TOut>(tc.Exception);
 
-                    tc.TaskCompletionSource.SetResult(pipelineResult);
-                }, _options);
             var lastStep = _steps.Last();
-            var setResultBlock = ((lastStep as DataflowStep).Block as ISourceBlock<TC<TOut, TOut>>);
-            setResultBlock.LinkTo(setResultStep);
+
+            if (lastStep.IsAsync)
+            {
+                var setResultStep =
+                    new ActionBlock<TCAsync<TOut, TOut>>(async (tc) =>
+                    {
+                        PipelineResult<TOut> pipelineResult;
+                        if (tc.IsSuccess)
+                        {
+                            try
+                            {
+                                var result = await tc.Input;
+                                pipelineResult = new PipelineResult<TOut>(result);
+                            }
+                            catch (Exception e)
+                            {
+                                pipelineResult = new PipelineResult<TOut>(e);
+                            }
+                        }
+                        else
+                        {
+                            pipelineResult = new PipelineResult<TOut>(tc.Exception);
+                        }
+
+                        tc.TaskCompletionSource.SetResult(pipelineResult);
+                    }, _options);
+                var setResultBlock = ((lastStep as DataflowStep).Block as ISourceBlock<TCAsync<TOut, TOut>>);
+                setResultBlock.LinkTo(setResultStep);
+            }
+            else
+            {
+                var setResultStep =
+                    new ActionBlock<TC<TOut, TOut>>((tc) =>
+                    {
+                        var pipelineResult = tc.IsSuccess
+                            ? new PipelineResult<TOut>(tc.Input)
+                            : new PipelineResult<TOut>(tc.Exception);
+
+                        tc.TaskCompletionSource.SetResult(pipelineResult);
+                    }, _options);
+                var lastStepAsSource = ((lastStep as DataflowStep).Block as ISourceBlock<TC<TOut, TOut>>);
+                lastStepAsSource.LinkTo(setResultStep);
+            }
 
             return new Pipeline<TIn, TOut>(_steps);
         }

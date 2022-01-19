@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Implementation", "Implement
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Pipeline", "Pipeline", "{AE6BF74E-DDD0-4E76-933D-1540C338E7E3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{3702EFAC-845C-4C25-A289-8E2CBEC80789}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +28,10 @@ Global
 		{A4785707-AA81-4991-9E9A-E755F6FB2A4A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A4785707-AA81-4991-9E9A-E755F6FB2A4A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A4785707-AA81-4991-9E9A-E755F6FB2A4A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3702EFAC-845C-4C25-A289-8E2CBEC80789}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3702EFAC-845C-4C25-A289-8E2CBEC80789}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3702EFAC-845C-4C25-A289-8E2CBEC80789}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3702EFAC-845C-4C25-A289-8E2CBEC80789}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{7CF9EDA0-8DD3-42E7-ACEF-6E4157B3D861} = {AE6BF74E-DDD0-4E76-933D-1540C338E7E3}
