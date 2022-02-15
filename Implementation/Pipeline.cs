@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Abstractions;
@@ -19,11 +20,13 @@ namespace Implementation
             _steps = steps;
         }
 
-        public Task<PipelineResult<TOut>> Execute(TIn input)
+        public Task<PipelineResult<TOut>> Execute(TIn input) => Execute(input, CancellationToken.None);
+
+        public Task<PipelineResult<TOut>> Execute(TIn input, CancellationToken cancellationToken)
         {
             var firstStep = (_steps.First() as DataflowStep).Block as ITargetBlock<TC<TIn, TOut>>;
             var tcs = new TaskCompletionSource<PipelineResult<TOut>>();
-            firstStep.SendAsync(new TC<TIn, TOut>(input, tcs));
+            firstStep.SendAsync(new TC<TIn, TOut>(input, tcs), cancellationToken);
             return tcs.Task;
         }
     }
