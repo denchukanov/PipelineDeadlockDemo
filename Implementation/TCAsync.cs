@@ -1,39 +1,31 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Abstractions;
+using Implementation.Internal;
 
 namespace Implementation
 {
-    internal class TCAsync<TInput, TOutput>
+    internal sealed class TCAsync<TInput, TOutput> : BaseTC<TInput, TOutput>
     {
         public TCAsync(Task<TInput> input, TaskCompletionSource<PipelineResult<TOutput>> tcs)
+            : base(tcs, true, null)
         {
             Input = input;
-            TaskCompletionSource = tcs;
-            Exception = null;
-            IsSuccess = true;
         }
 
 
         public TCAsync(TaskCompletionSource<PipelineResult<TOutput>> tcs, Exception exception)
+            : base(tcs, false, exception)
         {
             Input = Task.FromResult(default(TInput));
-            TaskCompletionSource = tcs;
-            Exception = exception;
-            IsSuccess = false;
         }
 
         public TCAsync(Task<TInput> input, TaskCompletionSource<PipelineResult<TOutput>> tcs, Exception exception)
+            : base(tcs, false, exception)
         {
             Input = input;
-            TaskCompletionSource = tcs;
-            Exception = exception;
-            IsSuccess = false;
         }
 
         public Task<TInput> Input { get; }
-        public TaskCompletionSource<PipelineResult<TOutput>> TaskCompletionSource { get; }
-        public bool IsSuccess { get; }
-        public Exception Exception { get; }
     }
 }
