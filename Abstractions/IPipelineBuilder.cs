@@ -8,6 +8,6 @@ namespace Abstractions
     {
         IPipelineBuilder<TIn, TOut> AddStep<TStepIn, TStepOut>(Func<TStepIn, TStepOut> stepFn);
         IPipelineBuilder<TIn, TOut> AddStepAsync<TStepIn, TStepOut>(Func<TStepIn, Task<TStepOut>> stepFn);
-        IPipeline<TIn, TOut> Create(CancellationTokenSource cts = null);
+        IPipeline<TIn, TOut> Create();
     }
 }

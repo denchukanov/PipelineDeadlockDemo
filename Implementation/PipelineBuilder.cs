@@ -13,7 +13,7 @@ namespace Implementation
         private readonly List<IStep> _steps = new();
         private readonly ExecutionDataflowBlockOptions _options;
 
-        public PipelineBuilder(CancellationTokenSource cts)
+        public PipelineBuilder()
         {
             _options = new ExecutionDataflowBlockOptions()
             {
@@ -161,7 +161,7 @@ namespace Implementation
             return this;
         }
 
-        public IPipeline<TIn, TOut> Create(CancellationTokenSource cts = null)
+        public IPipeline<TIn, TOut> Create()
         {
             if (_steps.Count == 0) throw new InvalidOperationException();
 

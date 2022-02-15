@@ -4,6 +4,6 @@ namespace Abstractions
 {
     public interface IPipelineBuilderFactory
     {
-        IPipelineBuilder<TIn, TOut> NewBuilder<TIn, TOut>(CancellationTokenSource cts);
+        IPipelineBuilder<TIn, TOut> NewBuilder<TIn, TOut>();
     }
 }
