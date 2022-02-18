@@ -28,7 +28,7 @@ namespace App
                     Console.WriteLine($"Start {str}");
 
                     // TODO NOTE: in that case we will be deadlocked
-                    throw new InvalidOperationException($"not implemented {str}");
+                    // throw new InvalidOperationException($"not implemented {str}");
 
                     var value = int.Parse(str.Split('-')[1]);
                     return new StringInt(str, value);
@@ -53,13 +53,14 @@ namespace App
                 })
                 .Create();
 
+            var result = await pipeline.Execute("test-1");
 
-            var tasks = Enumerable.Range(1, 100).AsParallel().Select(async x => await pipeline.Execute($"PIPE-{x}"));
-            var results = await Task.WhenAll(tasks);
-            foreach (var res in results)
-            {
-                Console.WriteLine(res?.Value ?? res?.Exception?.Message);
-            }
+            // var tasks = Enumerable.Range(1, 100).AsParallel().Select(async x => await pipeline.Execute($"PIPE-{x}"));
+            // var results = await Task.WhenAll(tasks);
+            // foreach (var res in results)
+            // {
+                // Console.WriteLine(res?.Value ?? res?.Exception?.Message);
+            // }
 
             Console.WriteLine("End!");
             Console.ReadKey();
