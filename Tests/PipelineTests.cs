@@ -52,7 +52,7 @@ namespace Tests
                 })
                 .AddStep<string, string>(str => throw new InvalidOperationException("str"))
                 .Create();
-
+            
             var tasks = Enumerable.Range(1, 6).AsParallel().Select(async x => await pipeline.Execute($"PIPE-{x}"));
             var results = await Task.WhenAll(tasks);
 

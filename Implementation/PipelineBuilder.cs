@@ -36,14 +36,16 @@ namespace Implementation
                 if (lastStep.IsAsync)
                 {
                     var step = AsyncInSyncOut(stepFn);
-                    var targetBlock = ((lastStep as DataflowStep).Block as ISourceBlock<TCAsync<TStepIn, TOut>>);
+                    var targetBlock =
+                        ((lastStep as DataflowStep).Block as ISourceBlock<AsyncStepContext<TStepIn, TOut>>);
                     targetBlock.LinkTo(step, new DataflowLinkOptions());
                     _steps.Add(DataflowStep.Sync(step));
                 }
                 else
                 {
                     var step = SyncInSyncOut(stepFn);
-                    var targetBlock = ((lastStep as DataflowStep).Block as ISourceBlock<TC<TStepIn, TOut>>);
+                    var targetBlock =
+                        ((lastStep as DataflowStep).Block as ISourceBlock<SyncStepContext<TStepIn, TOut>>);
                     targetBlock.LinkTo(step, new DataflowLinkOptions());
                     _steps.Add(DataflowStep.Sync(step));
                 }
@@ -51,50 +53,6 @@ namespace Implementation
 
             return this;
         }
-
-        private TransformBlock<TCAsync<TStepIn, TOut>, TC<TStepOut, TOut>> AsyncInSyncOut<TStepIn, TStepOut>(
-            Func<TStepIn, TStepOut> stepFn)
-        {
-            return new TransformBlock<TCAsync<TStepIn, TOut>, TC<TStepOut, TOut>>(async (tc) =>
-            {
-                try
-                {
-                    if (!tc.IsSuccess)
-                        return new TC<TStepOut, TOut>(tc.TaskCompletionSource, tc.Exception);
-
-                    var s = await tc.Input;
-                    return new TC<TStepOut, TOut>(stepFn(s), tc.TaskCompletionSource);
-                }
-                catch (Exception e)
-                {
-                    return new TC<TStepOut, TOut>(tc.TaskCompletionSource, e);
-                }
-            }, _options);
-        }
-
-     
-        private TransformBlock<TC<TStepIn, TOut>, TC<TStepOut, TOut>> SyncInSyncOut<TStepIn, TStepOut>(
-            Func<TStepIn, TStepOut> fn)
-        {
-            return new TransformBlock<TC<TStepIn, TOut>, TC<TStepOut, TOut>>((tc) =>
-            {
-                TC<TStepOut, TOut> result;
-                try
-                {
-                    if (!tc.IsSuccess) return new TC<TStepOut, TOut>(tc.TaskCompletionSource, tc.Exception);
-
-                    var stepResult = fn(tc.Input);
-                    result = new TC<TStepOut, TOut>(stepResult, tc.TaskCompletionSource);
-                }
-                catch (Exception e)
-                {
-                    result = new TC<TStepOut, TOut>(tc.TaskCompletionSource, e);
-                }
-
-                return result;
-            }, _options);
-        }
-
 
         public IPipelineBuilder<TIn, TOut> AddStepAsync<TStepIn, TStepOut>(Func<TStepIn, Task<TStepOut>> stepFn)
         {
@@ -110,60 +68,22 @@ namespace Implementation
                 if (lastStep.IsAsync)
                 {
                     var step = AsyncInAsyncOut(stepFn);
-                    var targetBlock = ((lastStep as DataflowStep).Block as ISourceBlock<TCAsync<TStepIn, TOut>>);
+                    var targetBlock =
+                        ((lastStep as DataflowStep).Block as ISourceBlock<AsyncStepContext<TStepIn, TOut>>);
                     targetBlock.LinkTo(step, new DataflowLinkOptions());
                     _steps.Add(DataflowStep.Async(step));
                 }
                 else
                 {
                     var step = SyncInAsyncOut(stepFn);
-                    var targetBlock = ((lastStep as DataflowStep).Block as ISourceBlock<TC<TStepIn, TOut>>);
+                    var targetBlock =
+                        ((lastStep as DataflowStep).Block as ISourceBlock<SyncStepContext<TStepIn, TOut>>);
                     targetBlock.LinkTo(step, new DataflowLinkOptions());
                     _steps.Add(DataflowStep.Async(step));
                 }
             }
 
             return this;
-        }
-
-        private TransformBlock<TCAsync<TStepIn, TOut>, TCAsync<TStepOut, TOut>> AsyncInAsyncOut<TStepIn, TStepOut>(
-            Func<TStepIn, Task<TStepOut>> stepFn)
-        {
-            return new TransformBlock<TCAsync<TStepIn, TOut>, TCAsync<TStepOut, TOut>>(async (tc) =>
-            {
-                try
-                {
-                    if (!tc.IsSuccess)
-                    {
-                        return new TCAsync<TStepOut, TOut>(tc.TaskCompletionSource, tc.Exception);
-                    }
-
-                    return new TCAsync<TStepOut, TOut>(stepFn(await tc.Input), tc.TaskCompletionSource);
-                }
-                catch (Exception e)
-                {
-                    return new TCAsync<TStepOut, TOut>(tc.TaskCompletionSource, e);
-                }
-            }, _options);
-        }
-
-        private TransformBlock<TC<TStepIn, TOut>, TCAsync<TStepOut, TOut>> SyncInAsyncOut<TStepIn, TStepOut>(
-            Func<TStepIn, Task<TStepOut>> stepFn)
-        {
-            return new TransformBlock<TC<TStepIn, TOut>, TCAsync<TStepOut, TOut>>((tc) =>
-            {
-                try
-                {
-                    if (!tc.IsSuccess)
-                        return new TCAsync<TStepOut, TOut>(tc.TaskCompletionSource, tc.Exception);
-
-                    return new TCAsync<TStepOut, TOut>(stepFn(tc.Input), tc.TaskCompletionSource);
-                }
-                catch (Exception e)
-                {
-                    return new TCAsync<TStepOut, TOut>(tc.TaskCompletionSource, e);
-                }
-            }, _options);
         }
 
         public IPipeline<TIn, TOut> Create()
@@ -176,7 +96,7 @@ namespace Implementation
             if (lastStep.IsAsync)
             {
                 var setResultStep =
-                    new ActionBlock<TCAsync<TOut, TOut>>(async (tc) =>
+                    new ActionBlock<AsyncStepContext<TOut, TOut>>(async (tc) =>
                     {
                         PipelineResult<TOut> pipelineResult;
                         if (tc.IsSuccess)
@@ -198,25 +118,115 @@ namespace Implementation
 
                         tc.TaskCompletionSource.SetResult(pipelineResult);
                     }, _options);
-                var setResultBlock = ((lastStep as DataflowStep).Block as ISourceBlock<TCAsync<TOut, TOut>>);
+                
+                var setResultBlock = ((lastStep as DataflowStep).Block as ISourceBlock<AsyncStepContext<TOut, TOut>>);
                 setResultBlock.LinkTo(setResultStep);
             }
             else
             {
                 var setResultStep =
-                    new ActionBlock<TC<TOut, TOut>>((tc) =>
+                    new ActionBlock<SyncStepContext<TOut, TOut>>((tc) =>
                     {
                         var pipelineResult = tc.IsSuccess
-                            ? new PipelineResult<TOut>(tc.Input)
-                            : new PipelineResult<TOut>(tc.Exception);
+                                                 ? new PipelineResult<TOut>(tc.Input)
+                                                 : new PipelineResult<TOut>(tc.Exception);
 
                         tc.TaskCompletionSource.SetResult(pipelineResult);
                     }, _options);
-                var lastStepAsSource = ((lastStep as DataflowStep).Block as ISourceBlock<TC<TOut, TOut>>);
+                
+                var lastStepAsSource = ((lastStep as DataflowStep).Block as ISourceBlock<SyncStepContext<TOut, TOut>>);
                 lastStepAsSource.LinkTo(setResultStep);
             }
 
             return new Pipeline<TIn, TOut>(_steps);
         }
+        
+        private TransformBlock<AsyncStepContext<TStepIn, TOut>, SyncStepContext<TStepOut, TOut>>
+            AsyncInSyncOut<TStepIn, TStepOut>(Func<TStepIn, TStepOut> stepFn)
+        {
+            Func<AsyncStepContext<TStepIn, TOut>, Task<SyncStepContext<TStepOut, TOut>>> transform = async tc =>
+            {
+                try
+                {
+                    return !tc.IsSuccess
+                               ? new SyncStepContext<TStepOut, TOut>(tc.TaskCompletionSource, tc.Exception)
+                               : new SyncStepContext<TStepOut, TOut>(stepFn(await tc.Input), tc.TaskCompletionSource);
+                }
+                catch (Exception e)
+                {
+                    return new SyncStepContext<TStepOut, TOut>(tc.TaskCompletionSource, e);
+                }
+            };
+
+            return new TransformBlock<AsyncStepContext<TStepIn, TOut>, SyncStepContext<TStepOut, TOut>>(
+                transform, _options);
+        }
+
+        private TransformBlock<SyncStepContext<TStepIn, TOut>, SyncStepContext<TStepOut, TOut>>
+            SyncInSyncOut<TStepIn, TStepOut>(Func<TStepIn, TStepOut> fn)
+        {
+            Func<SyncStepContext<TStepIn, TOut>, SyncStepContext<TStepOut, TOut>> transform = tc =>
+            {
+                try
+                {
+                    return !tc.IsSuccess
+                               ? new SyncStepContext<TStepOut, TOut>(tc.TaskCompletionSource, tc.Exception)
+                               : new SyncStepContext<TStepOut, TOut>(fn(tc.Input), tc.TaskCompletionSource);
+                }
+                catch (Exception e)
+                {
+                    return new SyncStepContext<TStepOut, TOut>(tc.TaskCompletionSource, e);
+                }
+            };
+
+
+            return new TransformBlock<SyncStepContext<TStepIn, TOut>, SyncStepContext<TStepOut, TOut>>(
+                transform, _options);
+        }
+
+        private TransformBlock<AsyncStepContext<TStepIn, TOut>, AsyncStepContext<TStepOut, TOut>>
+            AsyncInAsyncOut<TStepIn, TStepOut>(Func<TStepIn, Task<TStepOut>> stepFn)
+        {
+            Func<AsyncStepContext<TStepIn, TOut>, Task<AsyncStepContext<TStepOut, TOut>>> transform = async tc =>
+            {
+                try
+                {
+                    return !tc.IsSuccess
+                               ? new AsyncStepContext<TStepOut, TOut>(tc.TaskCompletionSource, tc.Exception)
+                               : new AsyncStepContext<TStepOut, TOut>(stepFn(await tc.Input), tc.TaskCompletionSource);
+                }
+                catch (Exception e)
+                {
+                    return new AsyncStepContext<TStepOut, TOut>(tc.TaskCompletionSource, e);
+                }
+            };
+
+            return new TransformBlock<AsyncStepContext<TStepIn, TOut>, AsyncStepContext<TStepOut, TOut>>(
+                transform, _options);
+        }
+
+
+        private TransformBlock<SyncStepContext<TStepIn, TOut>, AsyncStepContext<TStepOut, TOut>>
+            SyncInAsyncOut<TStepIn, TStepOut>(Func<TStepIn, Task<TStepOut>> stepFn)
+        {
+            Func<SyncStepContext<TStepIn, TOut>, AsyncStepContext<TStepOut, TOut>> transform = (tc) =>
+            {
+                try
+                {
+                    return !tc.IsSuccess
+                               ? new AsyncStepContext<TStepOut, TOut>(tc.TaskCompletionSource, tc.Exception)
+                               : new AsyncStepContext<TStepOut, TOut>(stepFn(tc.Input), tc.TaskCompletionSource);
+                }
+                catch (Exception e)
+                {
+                    return new AsyncStepContext<TStepOut, TOut>(tc.TaskCompletionSource, e);
+                }
+            };
+
+            return new TransformBlock<SyncStepContext<TStepIn, TOut>, AsyncStepContext<TStepOut, TOut>>(
+                transform, _options);
+        }
+
+        
     }
 }

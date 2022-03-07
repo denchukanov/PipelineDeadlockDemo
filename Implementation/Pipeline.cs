@@ -24,9 +24,9 @@ namespace Implementation
 
         public Task<PipelineResult<TOut>> Execute(TIn input, CancellationToken cancellationToken)
         {
-            var firstStep = (_steps.First() as DataflowStep).Block as ITargetBlock<TC<TIn, TOut>>;
+            var firstStep = (_steps.First() as DataflowStep).Block as ITargetBlock<SyncStepContext<TIn, TOut>>;
             var tcs = new TaskCompletionSource<PipelineResult<TOut>>();
-            firstStep.SendAsync(new TC<TIn, TOut>(input, tcs), cancellationToken);
+            firstStep.SendAsync(new SyncStepContext<TIn, TOut>(input, tcs), cancellationToken);
             return tcs.Task;
         }
     }

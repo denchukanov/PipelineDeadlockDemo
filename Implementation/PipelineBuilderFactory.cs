@@ -1,5 +1,4 @@
-﻿using System.Threading;
-using Abstractions;
+﻿using Abstractions;
 
 namespace Implementation
 {
